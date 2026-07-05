@@ -21,6 +21,15 @@
  * - Frequency changes use `setTargetAtTime` (a short exponential ramp)
  *   rather than an instant value jump, to avoid an audible click/zipper
  *   noise when the Frequency slider moves quickly.
+ * - iOS WebKit (which is what Safari, Chrome, Brave, and every other
+ *   browser is required to run on iOS — Apple mandates the same engine
+ *   underneath regardless of branding) has historically been stricter
+ *   about unlocking audio than desktop browsers or Android. Creating
+ *   the AudioContext and starting the oscillator inside the click
+ *   handler (as above) is usually enough, but as extra insurance this
+ *   also plays one silent buffer within that same gesture — a
+ *   well-known, harmless workaround specifically for unlocking WebKit's
+ *   audio pipeline on first use.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -62,6 +71,17 @@ export function useTone(frequency: number) {
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new AudioContextClass();
+
+    // WebKit-on-iOS audio unlock: play a single silent, effectively
+    // zero-length buffer within this same user gesture. This doesn't do
+    // anything audible — it's purely to satisfy iOS's stricter audio
+    // pipeline unlock requirement, which is sometimes fussier than just
+    // creating a context and calling resume().
+    const unlockBuffer = ctx.createBuffer(1, 1, 22050);
+    const unlockSource = ctx.createBufferSource();
+    unlockSource.buffer = unlockBuffer;
+    unlockSource.connect(ctx.destination);
+    unlockSource.start(0);
 
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();

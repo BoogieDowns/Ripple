@@ -37,6 +37,28 @@ html, body, #root {
   position: relative;
 }
 
+/* Soft-fullscreen fallback (used when the real Fullscreen API isn't
+   available at all — notably every browser on iOS, which all run
+   Apple's WebKit engine and don't implement requestFullscreen for
+   arbitrary elements). Harmless/redundant when real native fullscreen
+   is also active elsewhere (Android/desktop), since native fullscreen
+   already hides the panel automatically by only rendering the
+   fullscreened element's own subtree. */
+.app-root--fullscreen .control-panel,
+.app-root--fullscreen .panel-toggle-button {
+  display: none;
+}
+
+.app-root--fullscreen .canvas-stage {
+  padding: 0;
+}
+
+.app-root--fullscreen .canvas-container {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
 .canvas-container:fullscreen {
   background: #05070a;
   display: flex;
@@ -156,21 +178,28 @@ html, body, #root {
     position: fixed;
     bottom: 16px;
     left: 16px;
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
+    width: 34px;
+    height: 34px;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(16px) saturate(160%);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    color: rgba(234, 244, 255, 0.9);
-    font-size: 19px;
+    background: none;
+    border: none;
+    box-shadow: none;
+    color: rgba(234, 244, 255, 0.85);
+    font-size: 22px;
     line-height: 1;
     cursor: pointer;
     z-index: 30;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease, color 0.15s ease;
+  }
+
+  .panel-toggle-button:hover {
+    transform: scale(1.35);
+    color: #ffffff;
+  }
+
+  .panel-toggle-button:active {
+    transform: scale(1.1);
   }
 
   /* The panel itself becomes a full-height drawer sliding in from the

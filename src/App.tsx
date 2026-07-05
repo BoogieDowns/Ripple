@@ -60,13 +60,46 @@ export default function App() {
   const handleToggleFullscreen = () => {
     const target = fullscreenTargetRef.current;
     if (!target) return;
+
+    // iOS doesn't implement the Fullscreen API for arbitrary elements at
+    // all (historically limited to <video>) — and every browser on iOS
+    // (Safari, Chrome, Brave, Firefox) is required to run Apple's
+    // WebKit engine underneath, so this isn't a Brave-specific gap, it's
+    // a platform-wide one. `requestFullscreen` is simply undefined in
+    // that case, so this is detectable up front rather than needing to
+    // wait for a rejected promise.
+    const supportsNativeFullscreen = typeof target.requestFullscreen === "function";
+
+    if (!supportsNativeFullscreen) {
+      // Soft fullscreen: a CSS-only approximation (dish fills the
+      // viewport, panel/toggle hidden) rather than the real OS-level
+      // fullscreen — it can't hide the browser's own address bar the
+      // way true fullscreen does, since only the OS/browser controls
+      // that, but it's the closest equivalent available from web content
+      // on a platform that doesn't expose the real API here.
+      setIsFullscreen((v) => !v);
+      return;
+    }
+
     if (document.fullscreenElement) {
       document.exitFullscreen();
     } else {
       target.requestFullscreen().catch(() => {
-        // Some browsers/contexts (e.g. certain iframes) block fullscreen —
-        // fail quietly rather than throwing an unhandled rejection.
+        // Some browsers report support but still reject in practice —
+        // same soft-fullscreen fallback as above.
+        setIsFullscreen(true);
       });
+    }
+  };
+
+  // Used both by the toggle button and by clicking the dish itself while
+  // fullscreened (see SimulationCanvas) — exits native fullscreen if
+  // that's what's active, otherwise just clears the soft-fullscreen state.
+  const handleExitFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      setIsFullscreen(false);
     }
   };
 
@@ -120,12 +153,13 @@ export default function App() {
   };
 
   return (
-    <div className="app-root">
+    <div className={isFullscreen ? "app-root app-root--fullscreen" : "app-root"}>
       <div className="canvas-stage">
         <SimulationCanvas
           simulation={simulation}
           containerRef={fullscreenTargetRef}
           isFullscreen={isFullscreen}
+          onExitFullscreen={handleExitFullscreen}
           cellSize={CELL_SIZE}
           gain={gain}
           colorMode={colorMode}

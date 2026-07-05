@@ -8,6 +8,7 @@ interface SimulationCanvasProps {
   simulation: WaveSimulation;
   containerRef: RefObject<HTMLDivElement>;
   isFullscreen: boolean;
+  onExitFullscreen: () => void;
   cellSize: number;
   gain: number;
   colorMode: ColorMode;
@@ -25,6 +26,7 @@ export function SimulationCanvas({
   simulation,
   containerRef,
   isFullscreen,
+  onExitFullscreen,
   cellSize,
   gain,
   colorMode,
@@ -142,13 +144,14 @@ export function SimulationCanvas({
   }, [simulation, cellSize, gain, colorMode, customColors, params.frequency, params.frequencyScale]);
 
   // Clicking anywhere on the fullscreened area exits fullscreen — same
-  // idea as Escape (which browsers already handle natively for
-  // fullscreen), just via a click instead of a keypress. Only active
-  // while actually fullscreened, so this never affects normal clicks on
-  // the windowed dish.
+  // idea as Escape (which browsers already handle natively for real
+  // fullscreen), just via a click instead of a keypress. Delegates to
+  // the parent's handler since exiting differs depending on whether this
+  // is real native fullscreen or the CSS-only soft-fullscreen fallback
+  // (used on iOS, which doesn't support the Fullscreen API at all).
   const handleContainerClick = () => {
-    if (isFullscreen && document.fullscreenElement) {
-      document.exitFullscreen();
+    if (isFullscreen) {
+      onExitFullscreen();
     }
   };
 
