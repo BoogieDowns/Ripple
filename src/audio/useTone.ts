@@ -98,13 +98,23 @@ export function useTone(frequency: number) {
     return ctx;
   };
 
-  const toggle = () => {
+  const toggle = async () => {
     const ctx = ensureAudioGraph();
     const gainNode = gainRef.current;
     if (!gainNode) return;
 
-    if (ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
+    // Always attempt resume() here, not just when ctx.state looks
+    // suspended — iOS/WebKit can silently re-suspend an existing context
+    // after the tab loses focus or after a period of inactivity, and
+    // checking `.state` first occasionally lags reality on that platform.
+    // Awaiting it (rather than firing-and-forgetting) ensures the
+    // gain ramp below is scheduled only once the context is actually
+    // confirmed running, which is a stricter requirement on WebKit than
+    // on Chromium/desktop.
+    try {
+      await ctx.resume();
+    } catch {
+      // Some browsers reject resume() if already running — harmless.
     }
 
     setIsOn((prev) => {

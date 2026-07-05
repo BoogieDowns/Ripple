@@ -72,7 +72,22 @@ export function SimulationCanvas({
   // the available square space in its container, independent of the
   // simulation's internal bitmap resolution (dims * cellSize). This makes
   // the dish visually large regardless of grid resolution, while the
-  // simulation itself keeps rendering at a fixed, performant internal size.
+  // simulation itself keeps rendering at a fixed, performant internal
+  // size.
+  //
+  // On mobile fullscreen specifically, this switches from "contain"
+  // sizing (fit the circle entirely within the screen, i.e. sized by
+  // whichever dimension is *smaller* — the usual desktop/windowed look)
+  // to "cover" sizing (fill the entire screen edge-to-edge, sized by
+  // whichever dimension is *larger*, cropping the rest). The underlying
+  // grid/mask is unchanged — still a square circular dish — but on a
+  // tall phone screen, sizing it by the larger (height) dimension makes
+  // the circle so much bigger than the screen is wide that its curved
+  // edge always falls safely outside the visible viewport. The result is
+  // that no circular edge is visible at all: just the pattern filling
+  // every pixel, exactly the "not a disc anymore" look that was asked
+  // for, achieved by cropping rather than by distorting/stretching the
+  // actual simulation data.
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
@@ -80,7 +95,10 @@ export function SimulationCanvas({
 
     const applySize = () => {
       const rect = container.getBoundingClientRect();
-      const side = Math.max(200, Math.min(rect.width, rect.height) - 24);
+      const isMobileFullBleed = isFullscreen && window.innerWidth <= 720;
+      const side = isMobileFullBleed
+        ? Math.max(rect.width, rect.height)
+        : Math.max(200, Math.min(rect.width, rect.height) - 24);
       canvas.style.width = `${side}px`;
       canvas.style.height = `${side}px`;
       const dims = simulation.getDimensions();
@@ -92,7 +110,7 @@ export function SimulationCanvas({
     observer.observe(container);
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isFullscreen]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
