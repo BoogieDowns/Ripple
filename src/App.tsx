@@ -34,6 +34,14 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [resetSignal, setResetSignal] = useState(0);
 
+  // On narrow screens the control panel becomes a slide-out drawer
+  // rather than an always-visible floating sidebar (which would end up
+  // covering most of a phone-sized dish) — see the media query in
+  // app.css. This state only matters visually below that breakpoint; on
+  // desktop the toggle button stays hidden and the panel behaves exactly
+  // as before.
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
   // Fullscreen targets this container (the dish + its overlays, not the
   // whole page/control panel) — lives here so the toggle button can sit
   // in the control panel's button row while the element it fullscreens
@@ -146,7 +154,16 @@ export default function App() {
         customColors={customColors}
         onOpenColorPicker={() => setShowColorPicker(true)}
         onOpenHelp={() => setShowHelp(true)}
+        isPanelOpen={isPanelOpen}
       />
+      <button
+        className="panel-toggle-button"
+        onClick={() => setIsPanelOpen((v) => !v)}
+        aria-label={isPanelOpen ? "Close controls" : "Open controls"}
+        title={isPanelOpen ? "Close controls" : "Open controls"}
+      >
+        {isPanelOpen ? "×" : "⚙"}
+      </button>
       {showColorPicker && (
         <ColorWheelPicker
           colors={customColors}

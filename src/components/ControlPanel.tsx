@@ -22,6 +22,9 @@ interface ControlPanelProps {
   customColors: RGB[];
   onOpenColorPicker: () => void;
   onOpenHelp: () => void;
+  /** Only affects layout on narrow/mobile screens — see the media query
+   * in app.css. Ignored (no visual effect) above that breakpoint. */
+  isPanelOpen: boolean;
 }
 
 interface SliderConfig {
@@ -81,6 +84,7 @@ export function ControlPanel({
   customColors,
   onOpenColorPicker,
   onOpenHelp,
+  isPanelOpen,
 }: ControlPanelProps) {
   const colorModes =
     customColors.length > 0
@@ -108,7 +112,7 @@ export function ControlPanel({
   };
 
   return (
-    <div className="control-panel">
+    <div className={isPanelOpen ? "control-panel control-panel--open" : "control-panel"}>
       <div className="control-row">
         <GlassSelect value={colorMode} options={colorModes} onChange={onColorModeChange} />
       </div>
