@@ -1,0 +1,672 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  background: #05070a;
+  color: #d8e6f5;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app-root {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.canvas-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, #0a1018 0%, #05070a 70%);
+  padding: 32px;
+  min-width: 0;
+}
+
+.canvas-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.canvas-container:fullscreen {
+  background: #05070a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullscreen-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(220, 235, 255, 0.9);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.fullscreen-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.fullscreen-button:active {
+  transform: scale(0.94);
+}
+
+.diagnostics-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(190, 220, 255, 0.85);
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.simulation-canvas {
+  border-radius: 6px;
+  image-rendering: auto;
+  box-shadow:
+    0 0 0 1px rgba(120, 180, 255, 0.12),
+    0 0 60px rgba(60, 140, 255, 0.12),
+    0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.simulation-canvas--round {
+  border-radius: 50%;
+}
+
+/* ── Floating glass control panel ─────────────────────────────────
+   position: fixed removes it from the flex layout entirely, so
+   .canvas-stage (flex: 1) naturally expands to fill the full width and
+   the dish centers itself in the whole viewport, with the panel simply
+   floating on top rather than sharing the layout. */
+
+.control-panel {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  width: 220px;
+  padding: 4px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 10;
+}
+
+.control-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.control-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.control-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.control-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(210, 225, 240, 0.75);
+  letter-spacing: 0.02em;
+}
+
+.control-value {
+  color: #8fd8ff;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 10.5px;
+}
+
+.control-value--editable {
+  cursor: pointer;
+}
+
+.control-value--editable:hover {
+  color: #bfe8ff;
+}
+
+.control-value-input {
+  width: 46px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(143, 216, 255, 0.5);
+  outline: none;
+  color: #8fd8ff;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 10.5px;
+  text-align: right;
+  padding: 0;
+}
+
+/* Hide the native up/down spinner arrows so this reads as plain text
+   entry rather than a number-stepper widget, matching the rest of the
+   panel's minimal look. */
+.control-value-input::-webkit-inner-spin-button,
+.control-value-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.control-value-input {
+  -moz-appearance: textfield;
+}
+
+/* ── Clear-glass sliders ───────────────────────────────────────── */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.14));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 24%, #ffffff 0%, #ffffff 9%, rgba(255, 255, 255, 0) 24%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04) 30%, rgba(255, 255, 255, 0.24) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    inset 0 0 2px rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  margin-top: -0.5px;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 24%, #ffffff 0%, #ffffff 9%, rgba(255, 255, 255, 0) 24%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04) 30%, rgba(255, 255, 255, 0.24) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    inset 0 0 2px rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 5px;
+  border-radius: 3px;
+  background: transparent;
+}
+
+/* ── Glass select (fully custom, not a native <select>) ──────────── */
+
+.glass-select-root {
+  position: relative;
+  width: 100%;
+}
+
+.glass-select-trigger {
+  width: 100%;
+  padding: 10px 34px 10px 16px;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #eaf4ff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  font-size: 12.5px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.glass-select-trigger:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.glass-select-arrow {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: translateY(-25%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #8fd8ff;
+  pointer-events: none;
+  transition: transform 0.15s ease;
+}
+
+.glass-select-arrow--open {
+  transform: translateY(-25%) rotate(180deg);
+}
+
+/* The options list is a fully custom, absolutely-positioned div — unlike
+   a native <select>'s open popup (which most browsers render as a
+   separate OS surface immune to border-radius/shadow/spacing), this can
+   be rounded and spaced however we like, including the small gap below
+   the trigger chip so it reads as its own floating card. */
+.glass-select-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: rgba(16, 20, 28, 0.75);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  z-index: 20;
+}
+
+.glass-select-option {
+  background: none;
+  border: none;
+  color: rgba(234, 244, 255, 0.85);
+  font-size: 12.5px;
+  text-align: center;
+  padding: 9px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.glass-select-option:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+}
+
+.glass-select-option--active {
+  background: rgba(143, 216, 255, 0.16);
+  color: #bfe8ff;
+  font-weight: 600;
+}
+
+.glass-select-option--active:hover {
+  background: rgba(143, 216, 255, 0.22);
+}
+
+/* ── Bare icon buttons — no frame, enlarge on hover ──────────────── */
+
+.button-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.button-row button,
+.secondary-button {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 4px;
+  color: rgba(234, 244, 255, 0.85);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.button-row button {
+  /* Slightly smaller than .secondary-button (which is alone on its own
+     row and has more room) — with 5 icons sharing this row, this plus
+     the tighter gap above keeps the total width safely inside the panel
+     instead of the outer two icons getting clipped. */
+  font-size: 19px;
+}
+
+.button-row button:hover,
+.secondary-button:hover {
+  transform: scale(1.35);
+  color: #ffffff;
+}
+
+.button-row button:active,
+.secondary-button:active {
+  transform: scale(1.1);
+}
+
+.secondary-button {
+  width: 100%;
+  font-size: 22px;
+  text-align: center;
+}
+
+.mini-stops-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  justify-content: center;
+}
+
+.mini-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+}
+
+.diagnostic-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(210, 225, 240, 0.7);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.diagnostic-toggle:hover {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.diagnostic-toggle input[type="checkbox"] {
+  /* Fully custom checkbox: no visible box/border at all when unchecked —
+     just the checkmark itself fading in/out. appearance: none strips
+     the native square outline that would otherwise always be visible
+     regardless of accent-color. */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  outline: none;
+  position: relative;
+  cursor: pointer;
+}
+
+.diagnostic-toggle input[type="checkbox"]::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  line-height: 14px;
+  font-size: 12px;
+  color: transparent;
+  transition: color 0.15s ease;
+  pointer-events: none;
+}
+
+.diagnostic-toggle input[type="checkbox"]:checked::after {
+  color: rgba(210, 225, 240, 0.9);
+}
+
+/* ── Color wheel modal ─────────────────────────────────────────── */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 4, 8, 0.5);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-panel {
+  width: 300px;
+  max-width: calc(100vw - 40px);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 22px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.modal-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-header h2 {
+  font-size: 15px;
+  margin: 0;
+  color: #eaf2fb;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: rgba(210, 225, 240, 0.7);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.modal-close:hover {
+  color: #eaf4ff;
+}
+
+.modal-note {
+  font-size: 11.5px;
+  color: rgba(210, 225, 240, 0.65);
+  line-height: 1.4;
+  margin: 0;
+  text-align: center;
+}
+
+.tips-list {
+  width: 100%;
+  max-height: 340px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 4px 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tips-list li {
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(220, 232, 245, 0.85);
+}
+
+.tips-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tips-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.color-wheel-canvas {
+  border-radius: 50%;
+  cursor: crosshair;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.value-slider-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.value-slider-row label {
+  font-size: 11px;
+  color: rgba(210, 225, 240, 0.75);
+}
+
+.pending-swatch-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pending-swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.hex-label {
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 10.5px;
+  color: rgba(210, 225, 240, 0.7);
+  letter-spacing: 0.02em;
+}
+
+.add-color-button {
+  flex: 1;
+  padding: 10px 0;
+  background: rgba(120, 190, 255, 0.14);
+  backdrop-filter: blur(12px);
+  color: #eaf4ff;
+  border: 1px solid rgba(120, 190, 255, 0.3);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.add-color-button:hover:not(:disabled) {
+  background: rgba(120, 190, 255, 0.22);
+}
+
+.add-color-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stops-row {
+  width: 100%;
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.stop-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.stop-swatch {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.stop-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(20, 26, 36, 0.9);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #eaf4ff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.stop-remove:hover {
+  background: rgba(40, 50, 65, 0.95);
+}
+
+.done-button {
+  width: 100%;
+  padding: 10px 0;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  color: #eaf4ff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.done-button:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
