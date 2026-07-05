@@ -1,4 +1,4 @@
-# Resonance Lab
+# Ripple
 
 A physics-driven cymatics simulator: a circular water surface whose
 visible wave patterns emerge entirely from a real finite-difference
