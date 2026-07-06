@@ -244,8 +244,14 @@ html, body, #root {
     bottom: auto;
     transform: translate(-50%, -50%) scale(0.96);
     width: min(86vw, 340px);
-    max-height: 82vh;
-    padding: 26px 20px;
+    /* Was 82vh with the same spacing as desktop — with 8 sliders plus
+       everything else, that overflowed and pushed the button row below
+       the visible area, forcing a scroll. Using nearly the full screen
+       height plus tighter gaps below is enough to fit everything without
+       scrolling on ordinary phone screens. */
+    max-height: 95vh;
+    padding: 14px 18px;
+    gap: 7px;
     background: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -256,6 +262,10 @@ html, body, #root {
     pointer-events: none;
     transition: opacity 0.2s ease, transform 0.2s ease;
     z-index: 40;
+  }
+
+  .control-panel .control-row {
+    gap: 3px;
   }
 
   .control-panel--open {
