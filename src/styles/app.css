@@ -211,16 +211,16 @@ html, body, #root {
   }
 
   /* Full-screen blurred backdrop behind the settings panel — tapping
-     anywhere on it closes the panel, and the dish/pattern stays vaguely
-     visible (blurred) behind it rather than being fully hidden, so you
-     can still loosely see the effect of adjustments as you make them. */
+     anywhere on it closes the panel, and the dish/pattern stays clearly
+     visible (just softened, not obscured) behind it, so you can watch
+     the effect of adjustments as you make them. */
   .mobile-panel-backdrop {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(4, 6, 10, 0.4);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    background: rgba(4, 6, 10, 0.22);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
@@ -233,7 +233,8 @@ html, body, #root {
   }
 
   /* The panel itself is now a centered floating card over the blurred
-     backdrop, rather than a drawer sliding in from the right edge. */
+     backdrop, rather than a drawer sliding in from the right edge. No
+     border — just the glass background and shadow define its edge. */
   .control-panel {
     top: 50%;
     left: 50%;
@@ -246,7 +247,7 @@ html, body, #root {
     background: rgba(14, 18, 26, 0.55);
     backdrop-filter: blur(24px) saturate(160%);
     -webkit-backdrop-filter: blur(24px) saturate(160%);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border: none;
     border-radius: 24px;
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
     opacity: 0;
@@ -261,21 +262,49 @@ html, body, #root {
     transform: translate(-50%, -50%) scale(1);
   }
 
-  /* Slider thumbs are the main thing fingers need to land on — the
-     desktop size (15px) is too small a touch target, so this bumps it
-     up substantially just on mobile without affecting desktop at all. */
+  /* Sliders: the previous pass only enlarged the visible thumb, but the
+     actual touch-hit-box on mobile is governed by the input element's
+     own bounding box, which was still only 8px tall — enough to *see*
+     a bigger thumb without actually making it easier to *land a finger
+     on* it. This makes the real interactive area much taller (44px,
+     Apple's own minimum recommended touch target) while keeping the
+     visible track thin, by moving the track's visual styling onto the
+     dedicated track pseudo-elements instead of the input's own box. */
   input[type="range"] {
+    height: 44px;
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
     height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.14));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  input[type="range"]::-moz-range-track {
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.14));
+    border: 1px solid rgba(255, 255, 255, 0.12);
   }
 
   input[type="range"]::-webkit-slider-thumb {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
+    /* WebKit positions the thumb relative to the track's own height, not
+       the taller invisible box around it — this re-centers it since the
+       track above is only 8px while the thumb is 30px. Firefox handles
+       this centering automatically and doesn't need the equivalent. */
+    margin-top: -11px;
   }
 
   input[type="range"]::-moz-range-thumb {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
   }
 }
 
