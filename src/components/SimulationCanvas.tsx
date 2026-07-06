@@ -73,21 +73,11 @@ export function SimulationCanvas({
   // simulation's internal bitmap resolution (dims * cellSize). This makes
   // the dish visually large regardless of grid resolution, while the
   // simulation itself keeps rendering at a fixed, performant internal
-  // size.
-  //
-  // On mobile fullscreen specifically, this switches from "contain"
-  // sizing (fit the circle entirely within the screen, i.e. sized by
-  // whichever dimension is *smaller* — the usual desktop/windowed look)
-  // to "cover" sizing (fill the entire screen edge-to-edge, sized by
-  // whichever dimension is *larger*, cropping the rest). The underlying
-  // grid/mask is unchanged — still a square circular dish — but on a
-  // tall phone screen, sizing it by the larger (height) dimension makes
-  // the circle so much bigger than the screen is wide that its curved
-  // edge always falls safely outside the visible viewport. The result is
-  // that no circular edge is visible at all: just the pattern filling
-  // every pixel, exactly the "not a disc anymore" look that was asked
-  // for, achieved by cropping rather than by distorting/stretching the
-  // actual simulation data.
+  // size. Applies the same way whether fullscreened or not, on mobile or
+  // desktop — the full circle stays visible, fit within whichever
+  // dimension is smaller (an earlier version tried edge-to-edge cropping
+  // on mobile fullscreen specifically; that didn't read well in practice
+  // and was reverted back to this simpler, consistent behavior).
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
@@ -95,10 +85,7 @@ export function SimulationCanvas({
 
     const applySize = () => {
       const rect = container.getBoundingClientRect();
-      const isMobileFullBleed = isFullscreen && window.innerWidth <= 720;
-      const side = isMobileFullBleed
-        ? Math.max(rect.width, rect.height)
-        : Math.max(200, Math.min(rect.width, rect.height) - 24);
+      const side = Math.max(200, Math.min(rect.width, rect.height) - 24);
       canvas.style.width = `${side}px`;
       canvas.style.height = `${side}px`;
       const dims = simulation.getDimensions();

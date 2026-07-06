@@ -190,13 +190,26 @@ export default function App() {
         onOpenHelp={() => setShowHelp(true)}
         isPanelOpen={isPanelOpen}
       />
+      {/* Tapping anywhere on this (mobile only — hidden entirely on
+          desktop) closes the panel, instead of only the × button.
+          Rendered behind the panel itself so clicks inside the panel
+          don't bubble down to this and immediately close it. */}
+      <div
+        className={
+          isPanelOpen ? "mobile-panel-backdrop mobile-panel-backdrop--visible" : "mobile-panel-backdrop"
+        }
+        onClick={() => setIsPanelOpen(false)}
+      />
       <button
         className="panel-toggle-button"
         onClick={() => setIsPanelOpen((v) => !v)}
         aria-label={isPanelOpen ? "Close controls" : "Open controls"}
         title={isPanelOpen ? "Close controls" : "Open controls"}
       >
-        {isPanelOpen ? "×" : "⚙"}
+        {/* U+FE0E forces plain "text" glyph rendering rather than the
+            detailed color emoji iOS renders by default for this
+            character regardless of CSS styling. */}
+        {isPanelOpen ? "×" : "⚙\uFE0E"}
       </button>
       {showColorPicker && (
         <ColorWheelPicker

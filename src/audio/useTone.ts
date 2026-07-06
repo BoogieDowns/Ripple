@@ -24,12 +24,13 @@
  * - iOS WebKit (which is what Safari, Chrome, Brave, and every other
  *   browser is required to run on iOS — Apple mandates the same engine
  *   underneath regardless of branding) has historically been stricter
- *   about unlocking audio than desktop browsers or Android. Creating
- *   the AudioContext and starting the oscillator inside the click
- *   handler (as above) is usually enough, but as extra insurance this
- *   also plays one silent buffer within that same gesture — a
- *   well-known, harmless workaround specifically for unlocking WebKit's
- *   audio pipeline on first use.
+ *   about unlocking audio than desktop browsers or Android. Two separate
+ *   unlock mechanisms are used defensively: a silent Web Audio buffer
+ *   (unlocks the AudioContext specifically) and a silent HTMLAudioElement
+ *   play() call (a completely separate browser subsystem from Web Audio,
+ *   and historically the single most reliable gesture-unlock trick across
+ *   mobile browsers generally). Belt and suspenders — either one alone
+ *   is usually enough, but this doesn't rely on guessing which.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -37,6 +38,11 @@ import { useEffect, useRef, useState } from "react";
 const TONE_VOLUME = 0.12;
 const RAMP_SECONDS = 0.05;
 const FREQUENCY_SMOOTHING_SECONDS = 0.01;
+
+// A silent, ~0.1s WAV as a data URI — used purely to unlock the
+// HTMLAudioElement subsystem via a real play() call inside the gesture.
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 
 export function useTone(frequency: number) {
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -65,18 +71,33 @@ export function useTone(frequency: number) {
   }, []);
 
   const ensureAudioGraph = (): AudioContext => {
-    if (audioCtxRef.current) return audioCtxRef.current;
+    // Defensive: if a previous attempt left the context in a closed or
+    // otherwise broken state, don't keep reusing it — rebuild from
+    // scratch rather than silently reusing something non-functional.
+    if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+      return audioCtxRef.current;
+    }
+
+    // Unlock #1: a real HTMLAudioElement play() call, a different
+    // browser subsystem entirely from Web Audio/AudioContext.
+    try {
+      const silentAudio = new Audio(SILENT_WAV);
+      silentAudio.play().catch(() => {
+        // Some browsers reject this too — the AudioContext unlock below
+        // is the one that actually matters for the oscillator itself.
+      });
+    } catch {
+      // Audio element unsupported/blocked — continue regardless.
+    }
 
     const AudioContextClass: typeof AudioContext =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new AudioContextClass();
 
-    // WebKit-on-iOS audio unlock: play a single silent, effectively
-    // zero-length buffer within this same user gesture. This doesn't do
-    // anything audible — it's purely to satisfy iOS's stricter audio
-    // pipeline unlock requirement, which is sometimes fussier than just
-    // creating a context and calling resume().
+    // Unlock #2: a silent, effectively zero-length Web Audio buffer,
+    // played within this same gesture — specifically unlocks the
+    // AudioContext/oscillator pipeline, separate from the above.
     const unlockBuffer = ctx.createBuffer(1, 1, 22050);
     const unlockSource = ctx.createBufferSource();
     unlockSource.buffer = unlockBuffer;
