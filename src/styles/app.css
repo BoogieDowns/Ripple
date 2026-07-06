@@ -591,6 +591,13 @@ html, body, #root {
   color: rgba(210, 225, 240, 0.7);
   cursor: pointer;
   transition: color 0.15s ease;
+  /* Without this, the label (a flex child in .control-panel's column
+     layout) stretches to the panel's full width by default, making the
+     entire row tappable even though only the checkbox + "fps" text in
+     the middle look interactive. This shrinks the actual clickable area
+     down to just wrap that content, then centers the whole thing. */
+  align-self: center;
+  width: fit-content;
 }
 
 .diagnostic-toggle:hover {
