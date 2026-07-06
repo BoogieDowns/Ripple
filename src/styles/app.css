@@ -152,6 +152,12 @@ html, body, #root {
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 10;
+  /* Same fix as .glass-slider below, applied panel-wide as a defensive
+     measure — rapid clicking anywhere in here shouldn't be able to
+     trigger text selection and the resulting "not-allowed" cursor bug. */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
 }
 
 .control-panel::-webkit-scrollbar {
@@ -376,6 +382,17 @@ html, body, #root {
   touch-action: none;
   outline: none;
   -webkit-tap-highlight-color: transparent;
+  /* Without this, clicking quickly (fast enough to register as a
+     near-double-click) selects nearby text as a normal side effect of
+     clicking anywhere on a page. The browser then interprets the next
+     drag as an attempt to drag that selected text around, which fails
+     (there's nothing valid to drop it on) and shows the "not-allowed"
+     cursor, blocking the drag entirely until the selection clears. This
+     is standard practice for any custom drag-based UI element. */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .glass-slider-track {
