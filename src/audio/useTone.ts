@@ -36,6 +36,13 @@
  *   output path (not in addition to a direct destination connection)
  *   specifically to avoid the tone playing twice on platforms where
  *   direct-destination output already worked fine (like desktop).
+ * - BACKGROUND PLAYBACK: the same real <audio> element that fixes iOS
+ *   silence has a side effect — iOS grants genuine media elements
+ *   permission to keep playing in the background, the same allowance
+ *   music/podcast apps get. That's not what's wanted here (this is an
+ *   interactive instrument, not a background player), so a Page
+ *   Visibility listener below force-stops the tone the instant the tab
+ *   or app is backgrounded, rather than letting it keep sounding.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -61,6 +68,28 @@ export function useTone(frequency: number) {
       osc.frequency.setTargetAtTime(frequency, ctx.currentTime, FREQUENCY_SMOOTHING_SECONDS);
     }
   }, [frequency]);
+
+  // Force-stop the tone the moment the tab/app is backgrounded — see the
+  // module doc comment above for why this is needed despite the tone
+  // already being "off" by gain alone whenever the user hasn't
+  // explicitly turned it on. Marks it as off in the UI too, so coming
+  // back shows the muted icon rather than silently-still-on state.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) return;
+      const ctx = audioCtxRef.current;
+      const gainNode = gainRef.current;
+      if (ctx && gainNode) {
+        const now = ctx.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(0, now);
+      }
+      mediaElRef.current?.pause();
+      setIsOn(false);
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   // Clean up the audio graph if the component using this hook unmounts.
   useEffect(() => {
