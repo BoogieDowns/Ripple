@@ -276,8 +276,22 @@ html, body, #root {
 
   .control-panel--open {
     opacity: 1;
-    pointer-events: auto;
     transform: translate(-50%, -50%) scale(1);
+    /* Deliberately no pointer-events:auto here on the panel itself —
+       see the rule below for why. */
+  }
+
+  /* The panel container's own box includes empty space (gaps between
+     rows, the area a shrunk element like the fps toggle used to fill
+     before it was sized to fit its content) — without this, that empty
+     space silently absorbs taps and does nothing, since the panel sits
+     above the backdrop. Only re-enabling pointer events on the actual
+     visible children (not the container) lets a tap on any gap fall
+     through to the backdrop underneath and close the menu, matching
+     "tap anywhere outside a control closes it" everywhere in the panel,
+     not just literally outside its bounding rectangle. */
+  .control-panel--open > * {
+    pointer-events: auto;
   }
 
   /* Custom glass-slider sizing for mobile: a much taller real hit-area
@@ -751,6 +765,16 @@ html, body, #root {
   border-radius: 50%;
   cursor: crosshair;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 8px 30px rgba(0, 0, 0, 0.4);
+  /* Without this, dragging a finger across the wheel on mobile scrolls
+     the page instead of picking a color. */
+  touch-action: none;
+  /* Same fix as the sliders — prevents rapid taps from triggering text
+     selection, which would otherwise show a "not-allowed" cursor and
+     block the drag. */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .value-slider-row {

@@ -26,6 +26,11 @@ interface ControlPanelProps {
   /** Only affects layout on narrow/mobile screens — see the media query
    * in app.css. Ignored (no visual effect) above that breakpoint. */
   isPanelOpen: boolean;
+  /** Called when empty background space inside the panel is clicked
+   * (not an actual control) — closes it on mobile, same as tapping the
+   * backdrop outside the panel. Harmless no-op effect on desktop, where
+   * the panel doesn't hide regardless of this state. */
+  onRequestClose: () => void;
 }
 
 interface SliderConfig {
@@ -86,6 +91,7 @@ export function ControlPanel({
   onOpenColorPicker,
   onOpenHelp,
   isPanelOpen,
+  onRequestClose,
 }: ControlPanelProps) {
   const colorModes =
     customColors.length > 0
@@ -113,7 +119,18 @@ export function ControlPanel({
   };
 
   return (
-    <div className={isPanelOpen ? "control-panel control-panel--open" : "control-panel"}>
+    <div
+      className={isPanelOpen ? "control-panel control-panel--open" : "control-panel"}
+      onClick={(e) => {
+        // Only fires when the click lands on the panel's own background,
+        // not on any button/slider/select/label inside it (those are all
+        // separate child elements, so e.target !== e.currentTarget for
+        // clicks on them). This fixes empty space around small elements
+        // like the fps toggle (which no longer stretches to the full
+        // panel width) not doing anything when tapped.
+        if (e.target === e.currentTarget) onRequestClose();
+      }}
+    >
       <div className="control-row">
         <GlassSelect value={colorMode} options={colorModes} onChange={onColorModeChange} />
       </div>

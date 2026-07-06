@@ -88,24 +88,40 @@ export function ColorWheelPicker({ colors, onAddColor, onRemoveColor, onClose }:
     ctx.putImageData(imageData, 0, 0);
   }, [value]);
 
-  const handleWheelClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const updateFromPoint = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
+    const px = clientX - rect.left;
+    const py = clientY - rect.top;
     const cx = rect.width / 2;
     const cy = rect.height / 2;
     const dx = px - cx;
     const dy = py - cy;
     const radius = rect.width / 2 - 2;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > radius) return;
 
     const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
     const hue = (angle + 360) % 360;
+    // Naturally clamps to full saturation if the finger drifts slightly
+    // past the wheel's edge while dragging, rather than freezing/
+    // ignoring the update — matches how most real color-wheel pickers
+    // handle a drag that overshoots the circle.
     const saturation = Math.min(1, dist / radius);
     setPending(hsvToRgb(hue, saturation, value));
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    updateFromPoint(e.clientX, e.clientY);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // buttons/pressure aren't reliable across pointer types, but a
+    // captured pointer only sends move events to this element while
+    // still down, so no separate "is dragging" flag is needed.
+    if (e.buttons === 0 && e.pointerType === "mouse") return;
+    updateFromPoint(e.clientX, e.clientY);
   };
 
   const canAddMore = colors.length < MAX_COLORS;
@@ -128,7 +144,8 @@ export function ColorWheelPicker({ colors, onAddColor, onRemoveColor, onClose }:
         <canvas
           ref={canvasRef}
           className="color-wheel-canvas"
-          onClick={handleWheelClick}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
           style={{ width: WHEEL_SIZE, height: WHEEL_SIZE }}
         />
 

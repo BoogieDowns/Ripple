@@ -189,6 +189,7 @@ export default function App() {
         onOpenColorPicker={() => setShowColorPicker(true)}
         onOpenHelp={() => setShowHelp(true)}
         isPanelOpen={isPanelOpen}
+        onRequestClose={() => setIsPanelOpen(false)}
       />
       {/* Tapping anywhere on this (mobile only — hidden entirely on
           desktop) closes the panel, instead of only the × button.
