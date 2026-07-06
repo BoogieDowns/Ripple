@@ -212,15 +212,15 @@ html, body, #root {
 
   /* Full-screen blurred backdrop behind the settings panel — tapping
      anywhere on it closes the panel, and the dish/pattern stays clearly
-     visible (just softened, not obscured) behind it, so you can watch
-     the effect of adjustments as you make them. */
+     visible (just lightly softened, not obscured) behind it, so you can
+     watch the effect of adjustments as you make them. */
   .mobile-panel-backdrop {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(4, 6, 10, 0.22);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(4, 6, 10, 0.1);
+    backdrop-filter: blur(2.5px);
+    -webkit-backdrop-filter: blur(2.5px);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
@@ -290,6 +290,18 @@ html, body, #root {
 
   .glass-slider-thumb {
     --size: 30px;
+  }
+
+  /* Diagnostics overlay (fps/frequency), roughly half-size on mobile —
+     it's meant to be a small out-of-the-way readout, not a focal point,
+     and the desktop sizing was too prominent on a phone screen. */
+  .diagnostics-overlay {
+    top: 8px;
+    left: 8px;
+    padding: 4px 6px;
+    font-size: 6px;
+    line-height: 1.4;
+    border-radius: 6px;
   }
 }
 
