@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { hsvToRgb, type RGB } from "../rendering/colorMap";
+import { GlassSlider } from "./GlassSlider";
 
 interface ColorWheelPickerProps {
   colors: RGB[];
@@ -133,15 +134,7 @@ export function ColorWheelPicker({ colors, onAddColor, onRemoveColor, onClose }:
 
         <div className="value-slider-row">
           <label htmlFor="value-slider">Brightness</label>
-          <input
-            id="value-slider"
-            type="range"
-            min={0.05}
-            max={1}
-            step={0.01}
-            value={value}
-            onChange={(e) => setValue(parseFloat(e.target.value))}
-          />
+          <GlassSlider id="value-slider" min={0.05} max={1} step={0.01} value={value} onChange={setValue} />
         </div>
 
         <div className="pending-swatch-row">
