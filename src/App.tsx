@@ -201,17 +201,19 @@ export default function App() {
         }
         onClick={() => setIsPanelOpen(false)}
       />
-      <button
-        className="panel-toggle-button"
-        onClick={() => setIsPanelOpen((v) => !v)}
-        aria-label={isPanelOpen ? "Close controls" : "Open controls"}
-        title={isPanelOpen ? "Close controls" : "Open controls"}
-      >
-        {/* U+FE0E forces plain "text" glyph rendering rather than the
-            detailed color emoji iOS renders by default for this
-            character regardless of CSS styling. */}
-        {isPanelOpen ? "×" : "⚙\uFE0E"}
-      </button>
+      {!isPanelOpen && (
+        <button
+          className="panel-toggle-button"
+          onClick={() => setIsPanelOpen(true)}
+          aria-label="Open controls"
+          title="Open controls"
+        >
+          {/* U+FE0E forces plain "text" glyph rendering rather than the
+              detailed color emoji iOS renders by default for this
+              character regardless of CSS styling. */}
+          ⚙︎
+        </button>
+      )}
       {showColorPicker && (
         <ColorWheelPicker
           colors={customColors}
