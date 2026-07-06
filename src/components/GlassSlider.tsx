@@ -11,6 +11,14 @@
  * than the track itself. Building it as a plain div with Pointer Events
  * (which unifies mouse, touch, and pen) gives full, consistent control
  * over both.
+ *
+ * The thumb's position is expressed as a CSS custom property (`--p`, a
+ * 0-1 fraction) rather than a plain percentage, so the CSS side can
+ * inset its travel range by its own radius (see .glass-slider-thumb in
+ * app.css) — a plain `left: 100%` would center the thumb exactly at the
+ * track's right edge, leaving its outer half hanging past the
+ * container's boundary (and getting clipped by the panel's overflow)
+ * at min/max values.
  */
 
 import { useRef, useState } from "react";
@@ -81,7 +89,10 @@ export function GlassSlider({ value, min, max, step, onChange, id }: GlassSlider
       onKeyDown={handleKeyDown}
     >
       <div className="glass-slider-track" />
-      <div className="glass-slider-thumb" style={{ left: `${percent}%` }} />
+      <div
+        className="glass-slider-thumb"
+        style={{ "--p": percent / 100 } as React.CSSProperties}
+      />
     </div>
   );
 }

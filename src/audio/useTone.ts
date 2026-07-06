@@ -21,16 +21,21 @@
  * - Frequency changes use `setTargetAtTime` (a short exponential ramp)
  *   rather than an instant value jump, to avoid an audible click/zipper
  *   noise when the Frequency slider moves quickly.
- * - iOS WebKit (which is what Safari, Chrome, Brave, and every other
- *   browser is required to run on iOS — Apple mandates the same engine
- *   underneath regardless of branding) has historically been stricter
- *   about unlocking audio than desktop browsers or Android. Two separate
- *   unlock mechanisms are used defensively: a silent Web Audio buffer
- *   (unlocks the AudioContext specifically) and a silent HTMLAudioElement
- *   play() call (a completely separate browser subsystem from Web Audio,
- *   and historically the single most reliable gesture-unlock trick across
- *   mobile browsers generally). Belt and suspenders — either one alone
- *   is usually enough, but this doesn't rely on guessing which.
+ * - OUTPUT ROUTING (the actual fix for iOS silence): this does NOT
+ *   connect the gain node directly to `ctx.destination`. On iOS/WebKit,
+ *   a Web Audio graph connected straight to ctx.destination can report
+ *   completely normal internal state (AudioContext "running", gain
+ *   ramping as scheduled) while producing genuinely zero audible
+ *   output — WebKit doesn't always treat that connection alone as a
+ *   real "media playback" session at the OS level. That exact
+ *   signature (everything reports fine, nothing audible) is what
+ *   testing showed here. The standard fix: route the signal through a
+ *   MediaStreamAudioDestinationNode and play that stream via a real
+ *   HTMLAudioElement instead — iOS reliably recognizes an actual
+ *   <audio> element as genuine playback. This is used as the *only*
+ *   output path (not in addition to a direct destination connection)
+ *   specifically to avoid the tone playing twice on platforms where
+ *   direct-destination output already worked fine (like desktop).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -39,15 +44,11 @@ const TONE_VOLUME = 0.12;
 const RAMP_SECONDS = 0.05;
 const FREQUENCY_SMOOTHING_SECONDS = 0.01;
 
-// A silent, ~0.1s WAV as a data URI — used purely to unlock the
-// HTMLAudioElement subsystem via a real play() call inside the gesture.
-const SILENT_WAV =
-  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
-
 export function useTone(frequency: number) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const oscillatorRef = useRef<OscillatorNode | null>(null);
   const gainRef = useRef<GainNode | null>(null);
+  const mediaElRef = useRef<HTMLAudioElement | null>(null);
   const [isOn, setIsOn] = useState(false);
 
   // Keep the oscillator's frequency in sync with the current slider
@@ -64,6 +65,7 @@ export function useTone(frequency: number) {
   // Clean up the audio graph if the component using this hook unmounts.
   useEffect(() => {
     return () => {
+      mediaElRef.current?.pause();
       audioCtxRef.current?.close().catch(() => {
         // Already closed or unsupported — nothing to do.
       });
@@ -78,31 +80,10 @@ export function useTone(frequency: number) {
       return audioCtxRef.current;
     }
 
-    // Unlock #1: a real HTMLAudioElement play() call, a different
-    // browser subsystem entirely from Web Audio/AudioContext.
-    try {
-      const silentAudio = new Audio(SILENT_WAV);
-      silentAudio.play().catch(() => {
-        // Some browsers reject this too — the AudioContext unlock below
-        // is the one that actually matters for the oscillator itself.
-      });
-    } catch {
-      // Audio element unsupported/blocked — continue regardless.
-    }
-
     const AudioContextClass: typeof AudioContext =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new AudioContextClass();
-
-    // Unlock #2: a silent, effectively zero-length Web Audio buffer,
-    // played within this same gesture — specifically unlocks the
-    // AudioContext/oscillator pipeline, separate from the above.
-    const unlockBuffer = ctx.createBuffer(1, 1, 22050);
-    const unlockSource = ctx.createBufferSource();
-    unlockSource.buffer = unlockBuffer;
-    unlockSource.connect(ctx.destination);
-    unlockSource.start(0);
 
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -110,32 +91,48 @@ export function useTone(frequency: number) {
     osc.frequency.value = frequency;
     gainNode.gain.value = 0; // starts silent regardless of isOn state
     osc.connect(gainNode);
-    gainNode.connect(ctx.destination);
     osc.start();
+
+    // The actual output path — see the module doc comment above for why
+    // this is a MediaStream + real <audio> element rather than a direct
+    // connection to ctx.destination.
+    const streamDestination = ctx.createMediaStreamDestination();
+    gainNode.connect(streamDestination);
+
+    const mediaEl = new Audio();
+    mediaEl.srcObject = streamDestination.stream;
+    mediaEl.volume = 1; // actual loudness is controlled upstream by gainNode
+    mediaEl.play().catch(() => {
+      // If this rejects, the resume()/play() retry in toggle() below
+      // (also inside a user-gesture call) gets another chance.
+    });
 
     audioCtxRef.current = ctx;
     oscillatorRef.current = osc;
     gainRef.current = gainNode;
+    mediaElRef.current = mediaEl;
     return ctx;
   };
 
   const toggle = async () => {
     const ctx = ensureAudioGraph();
     const gainNode = gainRef.current;
+    const mediaEl = mediaElRef.current;
     if (!gainNode) return;
 
-    // Always attempt resume() here, not just when ctx.state looks
-    // suspended — iOS/WebKit can silently re-suspend an existing context
-    // after the tab loses focus or after a period of inactivity, and
-    // checking `.state` first occasionally lags reality on that platform.
-    // Awaiting it (rather than firing-and-forgetting) ensures the
-    // gain ramp below is scheduled only once the context is actually
-    // confirmed running, which is a stricter requirement on WebKit than
-    // on Chromium/desktop.
+    // Always attempt resume()/play() here, not just when state looks
+    // wrong — iOS/WebKit can silently re-suspend things after the tab
+    // loses focus or after a period of inactivity, and checking state
+    // first occasionally lags reality on that platform. Awaiting resume()
+    // ensures the gain ramp below is scheduled only once the context is
+    // actually confirmed running.
     try {
       await ctx.resume();
     } catch {
       // Some browsers reject resume() if already running — harmless.
+    }
+    if (mediaEl && mediaEl.paused) {
+      mediaEl.play().catch(() => {});
     }
 
     setIsOn((prev) => {

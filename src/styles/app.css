@@ -289,8 +289,7 @@ html, body, #root {
   }
 
   .glass-slider-thumb {
-    width: 30px;
-    height: 30px;
+    --size: 30px;
   }
 }
 
@@ -381,10 +380,18 @@ html, body, #root {
 }
 
 .glass-slider-thumb {
+  --size: 15px;
   position: absolute;
   top: 50%;
-  width: 15px;
-  height: 15px;
+  width: var(--size);
+  height: var(--size);
+  /* Inset the travel range by the thumb's own radius on each side —
+     without this, `left: 0%`/`left: 100%` would center the thumb
+     exactly on the track's edges, leaving its outer half hanging past
+     the container's boundary (and getting clipped by the panel's
+     overflow) at min/max values. --p is a 0-1 fraction set from React
+     (see GlassSlider.tsx), not a percentage. */
+  left: calc(var(--size) / 2 + (100% - var(--size)) * var(--p, 0));
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background:
