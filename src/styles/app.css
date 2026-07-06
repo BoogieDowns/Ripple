@@ -232,9 +232,11 @@ html, body, #root {
     pointer-events: auto;
   }
 
-  /* The panel itself is now a centered floating card over the blurred
-     backdrop, rather than a drawer sliding in from the right edge. No
-     border — just the glass background and shadow define its edge. */
+  /* The panel is no longer a card at all — no background, border, or
+     shadow of its own. The only "faded background" effect comes from
+     .mobile-panel-backdrop behind it; the controls just float directly
+     over that, matching the same "no card, just floating controls"
+     look the desktop panel has always had. */
   .control-panel {
     top: 50%;
     left: 50%;
@@ -244,12 +246,12 @@ html, body, #root {
     width: min(86vw, 340px);
     max-height: 82vh;
     padding: 26px 20px;
-    background: rgba(14, 18, 26, 0.55);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border: none;
-    border-radius: 24px;
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+    border-radius: 0;
+    box-shadow: none;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease, transform 0.2s ease;
@@ -262,47 +264,21 @@ html, body, #root {
     transform: translate(-50%, -50%) scale(1);
   }
 
-  /* Sliders: the previous pass only enlarged the visible thumb, but the
-     actual touch-hit-box on mobile is governed by the input element's
-     own bounding box, which was still only 8px tall — enough to *see*
-     a bigger thumb without actually making it easier to *land a finger
-     on* it. This makes the real interactive area much taller (44px,
-     Apple's own minimum recommended touch target) while keeping the
-     visible track thin, by moving the track's visual styling onto the
-     dedicated track pseudo-elements instead of the input's own box. */
-  input[type="range"] {
+  /* Custom glass-slider sizing for mobile: a much taller real hit-area
+     (44px, Apple's own minimum recommended touch target) than desktop's
+     24px, while the visible track/thumb stay reasonably sized rather
+     than growing to match — since this component fully controls its own
+     layout (unlike a native range input), sizing it correctly on mobile
+     is just these three straightforward overrides. */
+  .glass-slider {
     height: 44px;
-    background: none;
-    border: none;
-    display: flex;
-    align-items: center;
   }
 
-  input[type="range"]::-webkit-slider-runnable-track {
+  .glass-slider-track {
     height: 8px;
-    border-radius: 4px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.14));
-    border: 1px solid rgba(255, 255, 255, 0.12);
   }
 
-  input[type="range"]::-moz-range-track {
-    height: 8px;
-    border-radius: 4px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.14));
-    border: 1px solid rgba(255, 255, 255, 0.12);
-  }
-
-  input[type="range"]::-webkit-slider-thumb {
-    width: 30px;
-    height: 30px;
-    /* WebKit positions the thumb relative to the track's own height, not
-       the taller invisible box around it — this re-centers it since the
-       track above is only 8px while the thumb is 30px. Firefox handles
-       this centering automatically and doesn't need the equivalent. */
-    margin-top: -11px;
-  }
-
-  input[type="range"]::-moz-range-thumb {
+  .glass-slider-thumb {
     width: 30px;
     height: 30px;
   }
@@ -362,24 +338,44 @@ html, body, #root {
   -moz-appearance: textfield;
 }
 
-/* ── Clear-glass sliders ───────────────────────────────────────── */
+/* ── Clear-glass custom slider (replaces native <input type=range>) ──
+   The outer .glass-slider div is what actually receives pointer events
+   and defines the real touch-hit-area (via its own height) — the track
+   and thumb are purely visual, absolutely positioned and centered
+   within it, with pointer-events disabled so hit-testing always
+   resolves to the outer container consistently. */
 
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
+.glass-slider {
+  position: relative;
   width: 100%;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.glass-slider-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
   height: 5px;
   border-radius: 3px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.14));
   border: 1px solid rgba(255, 255, 255, 0.12);
-  outline: none;
-  cursor: pointer;
+  pointer-events: none;
 }
 
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
+.glass-slider-thumb {
+  position: absolute;
+  top: 50%;
   width: 15px;
   height: 15px;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   background:
     radial-gradient(circle at 30% 24%, #ffffff 0%, #ffffff 9%, rgba(255, 255, 255, 0) 24%),
@@ -388,28 +384,14 @@ input[type="range"]::-webkit-slider-thumb {
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.4),
     inset 0 0 2px rgba(255, 255, 255, 0.55);
-  cursor: pointer;
-  margin-top: -0.5px;
+  pointer-events: none;
 }
 
-input[type="range"]::-moz-range-thumb {
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 30% 24%, #ffffff 0%, #ffffff 9%, rgba(255, 255, 255, 0) 24%),
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04) 30%, rgba(255, 255, 255, 0.24) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.65);
+.glass-slider:focus-visible .glass-slider-thumb {
   box-shadow:
+    0 0 0 3px rgba(143, 216, 255, 0.4),
     0 1px 2px rgba(0, 0, 0, 0.4),
     inset 0 0 2px rgba(255, 255, 255, 0.55);
-  cursor: pointer;
-}
-
-input[type="range"]::-moz-range-track {
-  height: 5px;
-  border-radius: 3px;
-  background: transparent;
 }
 
 /* ── Glass select (fully custom, not a native <select>) ──────────── */

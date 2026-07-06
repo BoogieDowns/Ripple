@@ -120,31 +120,56 @@ export function useTone(frequency: number) {
   };
 
   const toggle = async () => {
-    const ctx = ensureAudioGraph();
-    const gainNode = gainRef.current;
-    if (!gainNode) return;
-
-    // Always attempt resume() here, not just when ctx.state looks
-    // suspended — iOS/WebKit can silently re-suspend an existing context
-    // after the tab loses focus or after a period of inactivity, and
-    // checking `.state` first occasionally lags reality on that platform.
-    // Awaiting it (rather than firing-and-forgetting) ensures the
-    // gain ramp below is scheduled only once the context is actually
-    // confirmed running, which is a stricter requirement on WebKit than
-    // on Chromium/desktop.
+    // TEMPORARY DIAGNOSTIC: two rounds of reasonable, well-documented
+    // fixes haven't resolved tone on iOS, which means continuing to
+    // guess blind isn't a good use of another round. This wraps
+    // everything in a try/catch that surfaces the *actual* error (if
+    // any is even being thrown) directly on the device via alert(),
+    // since remote debugging tools aren't always available on mobile.
+    // Screenshot whatever this shows (or the fact that nothing shows at
+    // all, which is itself useful information) and that tells us
+    // exactly what to fix next, instead of another guess. Remove this
+    // try/catch once the real cause is identified.
     try {
-      await ctx.resume();
-    } catch {
-      // Some browsers reject resume() if already running — harmless.
-    }
+      const ctx = ensureAudioGraph();
+      const gainNode = gainRef.current;
+      if (!gainNode) {
+        window.alert("Tone diagnostic: gainNode is missing after ensureAudioGraph().");
+        return;
+      }
 
-    setIsOn((prev) => {
-      const next = !prev;
-      const now = ctx.currentTime;
-      gainNode.gain.cancelScheduledValues(now);
-      gainNode.gain.setTargetAtTime(next ? TONE_VOLUME : 0, now, RAMP_SECONDS);
-      return next;
-    });
+      // Always attempt resume() here, not just when ctx.state looks
+      // suspended — iOS/WebKit can silently re-suspend an existing context
+      // after the tab loses focus or after a period of inactivity, and
+      // checking `.state` first occasionally lags reality on that platform.
+      // Awaiting it (rather than firing-and-forgetting) ensures the
+      // gain ramp below is scheduled only once the context is actually
+      // confirmed running, which is a stricter requirement on WebKit than
+      // on Chromium/desktop.
+      try {
+        await ctx.resume();
+      } catch {
+        // Some browsers reject resume() if already running — harmless.
+      }
+
+      setIsOn((prev) => {
+        const next = !prev;
+        const now = ctx.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setTargetAtTime(next ? TONE_VOLUME : 0, now, RAMP_SECONDS);
+        return next;
+      });
+
+      // Surfaces the actual state right after toggling, since "silent"
+      // could mean several different things (context suspended, volume
+      // at 0, context never created at all) that all look the same from
+      // the outside.
+      window.alert(
+        `Tone diagnostic: ctx.state=${ctx.state}, gain=${gainNode.gain.value.toFixed(3)}`
+      );
+    } catch (err) {
+      window.alert("Tone error: " + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   return { isOn, toggle };

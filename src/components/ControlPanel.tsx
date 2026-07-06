@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { SimulationParams } from "../simulation/types";
 import type { ColorMode, RGB } from "../rendering/colorMap";
 import { GlassSelect } from "./GlassSelect";
+import { GlassSlider } from "./GlassSlider";
 
 interface ControlPanelProps {
   params: SimulationParams;
@@ -164,14 +165,13 @@ export function ControlPanel({
               </span>
             )}
           </div>
-          <input
+          <GlassSlider
             id={s.key}
-            type="range"
             min={s.min}
             max={s.max}
             step={s.step}
             value={params[s.key] as number}
-            onChange={(e) => onChange({ [s.key]: parseFloat(e.target.value) })}
+            onChange={(v) => onChange({ [s.key]: v })}
           />
         </div>
       ))}
@@ -181,15 +181,7 @@ export function ControlPanel({
           <label htmlFor="gain">Gain</label>
           <span className="control-value">{gain.toFixed(2)}</span>
         </div>
-        <input
-          id="gain"
-          type="range"
-          min={0.2}
-          max={3}
-          step={0.05}
-          value={gain}
-          onChange={(e) => onGainChange(parseFloat(e.target.value))}
-        />
+        <GlassSlider id="gain" min={0.2} max={3} step={0.05} value={gain} onChange={onGainChange} />
       </div>
 
       <div className="button-row">
