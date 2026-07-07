@@ -50,7 +50,14 @@ export function buildSourceRegion(
   const maxSafeFraction = radius > 0 ? Math.max(0, (radius - sourceRadiusCells - 1) / radius) : 0;
   const effectiveOffsetFraction = Math.min(offsetFraction, maxSafeFraction);
 
-  const angleRad = (angleDeg * Math.PI) / 180;
+  // +90° shift: without it, 0° points along +X (screen right) since
+  // that's the standard math convention for angle 0 in cos/sin. Adding
+  // 90° here makes 0° point along +Y instead (screen down, since canvas
+  // Y increases downward) — i.e. the bottom of the dish — which is the
+  // more intuitive "0° = down" reference for this slider. Everything
+  // else about the offset/clamping logic above is unaffected; this only
+  // rotates which direction the angle value maps to.
+  const angleRad = ((angleDeg + 90) * Math.PI) / 180;
   const sourceCenterX = centerX + effectiveOffsetFraction * radius * Math.cos(angleRad);
   const sourceCenterY = centerY + effectiveOffsetFraction * radius * Math.sin(angleRad);
 

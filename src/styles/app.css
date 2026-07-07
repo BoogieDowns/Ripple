@@ -277,20 +277,22 @@ html, body, #root {
   .control-panel--open {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
-    /* Deliberately no pointer-events:auto here on the panel itself —
-       see the rule below for why. */
+    /* Deliberately no pointer-events:auto here on the panel itself, nor
+       on any of its wrapping rows below — every container stays
+       pass-through by default. Only the specific interactive elements
+       listed below re-enable pointer events, so a tap on ANY empty
+       space anywhere in the panel (gaps between rows, space around the
+       button cluster within .button-row, etc.) falls through to the
+       backdrop and closes the menu — not just gaps at the top level. */
   }
 
-  /* The panel container's own box includes empty space (gaps between
-     rows, the area a shrunk element like the fps toggle used to fill
-     before it was sized to fit its content) — without this, that empty
-     space silently absorbs taps and does nothing, since the panel sits
-     above the backdrop. Only re-enabling pointer events on the actual
-     visible children (not the container) lets a tap on any gap fall
-     through to the backdrop underneath and close the menu, matching
-     "tap anywhere outside a control closes it" everywhere in the panel,
-     not just literally outside its bounding rectangle. */
-  .control-panel--open > * {
+  .control-panel--open .glass-slider,
+  .control-panel--open .glass-select-root,
+  .control-panel--open .secondary-button,
+  .control-panel--open .button-row button,
+  .control-panel--open .diagnostic-toggle,
+  .control-panel--open .control-value--editable,
+  .control-panel--open .control-value-input {
     pointer-events: auto;
   }
 
